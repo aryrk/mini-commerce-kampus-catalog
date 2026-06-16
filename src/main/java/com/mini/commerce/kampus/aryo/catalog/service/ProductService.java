@@ -35,6 +35,7 @@ public class ProductService {
                 .name(savedProduct.getName())
                 .price(savedProduct.getPrice())
                 .stock(savedProduct.getStock())
+                .status(savedProduct.getStatus())
                 .build();
     }
 
