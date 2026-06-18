@@ -11,6 +11,8 @@ import com.mini.commerce.kampus.aryo.catalog.dto.Product.DetailProduct.DetailPro
 import com.mini.commerce.kampus.aryo.catalog.dto.Product.ListProduct.ListProductResponse;
 import com.mini.commerce.kampus.aryo.catalog.entity.Product;
 import com.mini.commerce.kampus.aryo.catalog.enums.ProductStatus;
+import com.mini.commerce.kampus.aryo.catalog.exception.BusinessExeption;
+import com.mini.commerce.kampus.aryo.catalog.mapper.CatalogMapper;
 import com.mini.commerce.kampus.aryo.catalog.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CatalogMapper catalogMapper;
 
     public CreateProductResponse createProduct(CreateProductRequest payload){
         Product product = new Product();
@@ -29,44 +32,28 @@ public class ProductService {
         product.setStock(payload.getStock());
 
         Product savedProduct = productRepository.save(product);
-        return CreateProductResponse.builder()
-                .id(savedProduct.getId())
-                .sku(savedProduct.getSku())
-                .name(savedProduct.getName())
-                .price(savedProduct.getPrice())
-                .stock(savedProduct.getStock())
-                .status(savedProduct.getStatus())
-                .build();
+
+        return catalogMapper.toCreateProductResponse(savedProduct);
     }
 
     public List<ListProductResponse> listProducts() {
         List<Product> products = productRepository.findByStatus(ProductStatus.ACTIVE);
+
         return products.stream()
-                .map(product -> ListProductResponse.builder()
-                        .id(product.getId())
-                        .sku(product.getSku())
-                        .name(product.getName())
-                        .price(product.getPrice().toString())
-                        .build())
+                .map(catalogMapper::toListProductResponse)
                 .toList();
     }
 
     public DetailProductResponse getProductDetail(UUID id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-        return DetailProductResponse.builder()
-                .id(product.getId())
-                .sku(product.getSku())
-                .name(product.getName())
-                .price(product.getPrice())
-                .stock(product.getStock())
-                .status(product.getStatus())
-                .build();
+                .orElseThrow(() -> new BusinessExeption("Product not found"));
+
+        return catalogMapper.toDetailProductResponse(product);
     }
 
     public void updateProductStock(UUID id, int newStock) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new BusinessExeption("Product not found"));
         product.setStock(newStock);
         productRepository.save(product);
 
@@ -75,7 +62,7 @@ public class ProductService {
 
     public void updateProductStatus(UUID id, ProductStatus newStatus) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new BusinessExeption("Product not found"));
         product.setStatus(newStatus);
         productRepository.save(product);
 

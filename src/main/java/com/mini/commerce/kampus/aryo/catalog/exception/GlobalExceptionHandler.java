@@ -1,9 +1,10 @@
 package com.mini.commerce.kampus.aryo.catalog.exception;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,30 +13,42 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.mini.commerce.kampus.aryo.catalog.dto.Errors.ErrorResponse;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
+    public ResponseEntity<ErrorResponse> handleValidationErrors(MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
 
-        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            errors.put(error.getField(), error.getDefaultMessage());
-        }
+        List<String> validationMessages = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.toList());
 
         ErrorResponse response = ErrorResponse.builder()
-                .message("Validation failed")
-                .details(errors)
-                .timestamp(java.time.LocalDateTime.now())
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message("Validation Failed")
+                .errors(validationMessages)
+                .path(request.getRequestURI())
                 .build();
-        return ResponseEntity.badRequest().body(response);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+    @ExceptionHandler(BusinessExeption.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessExeption ex, HttpServletRequest request) {
         ErrorResponse response = ErrorResponse.builder()
-                .message(ex.getCause().getMessage())
-                .timestamp(java.time.LocalDateTime.now())
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
                 .build();
-        return ResponseEntity.badRequest().body(response);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 }
